@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Drupal\backlit\EventSubscriber;
 
 use Drupal\backlit\Service\LitSsrRenderer;
+use Drupal\node\NodeInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpKernel\Event\ResponseEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
@@ -17,8 +18,9 @@ use Symfony\Component\HttpKernel\KernelEvents;
  * server-rendered with Declarative Shadow DOM. The user sees styled
  * content on first paint, before any JavaScript loads.
  *
- * Skips admin pages because Drupal's admin UI has enough problems
- * without us injecting shadow roots into it.
+ * Respects the backlit_ssr field on content entities: if an author
+ * has disabled SSR for a page, we leave it alone. Because editorial
+ * autonomy matters, even for shadow roots.
  */
 final class SsrResponseSubscriber implements EventSubscriberInterface {
 
@@ -53,6 +55,14 @@ final class SsrResponseSubscriber implements EventSubscriberInterface {
 
     $contentType = $response->headers->get('Content-Type', '');
     if (!str_contains($contentType, 'text/html')) {
+      return;
+    }
+
+    // Respect the backlit_ssr field: if the author disabled SSR, skip it.
+    $node = $request->attributes->get('node');
+    if ($node instanceof NodeInterface
+     && $node->hasField('backlit_ssr')
+     && !(bool) $node->get('backlit_ssr')->value) {
       return;
     }
 

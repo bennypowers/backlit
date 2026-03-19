@@ -1,0 +1,81 @@
+<?php
+
+/**
+ * @file
+ * Install, update, and uninstall functions for the Backlit module.
+ */
+
+use Drupal\field\Entity\FieldConfig;
+use Drupal\field\Entity\FieldStorageConfig;
+
+/**
+ * Implements hook_install().
+ */
+function backlit_install(): void {
+  // Create the backlit_ssr field storage if it doesn't exist.
+  if (!FieldStorageConfig::loadByName('node', 'backlit_ssr')) {
+    FieldStorageConfig::create([
+      'field_name' => 'backlit_ssr',
+      'entity_type' => 'node',
+      'type' => 'boolean',
+      'cardinality' => 1,
+      'settings' => [],
+    ])->save();
+  }
+
+  // Add the field to all existing content types.
+  $types = \Drupal::entityTypeManager()
+    ->getStorage('node_type')
+    ->loadMultiple();
+
+  foreach ($types as $type) {
+    $bundle = $type->id();
+    if (!FieldConfig::loadByName('node', $bundle, 'backlit_ssr')) {
+      FieldConfig::create([
+        'field_name' => 'backlit_ssr',
+        'entity_type' => 'node',
+        'bundle' => $bundle,
+        'label' => 'Enable SSR',
+        'description' => 'When enabled, Backlit will server-render web components on this page with Declarative Shadow DOM.',
+        'required' => FALSE,
+        'default_value' => [['value' => 1]],
+        'settings' => [
+          'on_label' => 'SSR enabled',
+          'off_label' => 'SSR disabled',
+        ],
+      ])->save();
+
+      // Add to the form display.
+      $form_display = \Drupal::entityTypeManager()
+        ->getStorage('entity_form_display')
+        ->load("node.$bundle.default");
+      if ($form_display) {
+        $form_display->setComponent('backlit_ssr', [
+          'type' => 'boolean_checkbox',
+          'weight' => 100,
+          'settings' => ['display_label' => TRUE],
+        ])->save();
+      }
+    }
+  }
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function backlit_uninstall(): void {
+  // Clean up field instances from all bundles.
+  $fields = \Drupal::entityTypeManager()
+    ->getStorage('field_config')
+    ->loadByProperties(['field_name' => 'backlit_ssr']);
+
+  foreach ($fields as $field) {
+    $field->delete();
+  }
+
+  // Remove field storage.
+  $storage = FieldStorageConfig::loadByName('node', 'backlit_ssr');
+  if ($storage) {
+    $storage->delete();
+  }
+}
