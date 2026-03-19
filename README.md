@@ -23,9 +23,9 @@ cd web/modules/contrib/backlit
 
 ## How it works
 
-Backlit ships a pre-compiled Go binary that embeds a WASM module. Inside that WASM module: [QuickJS](https://bellard.org/quickjs/) running [`@lit-labs/ssr`](https://www.npmjs.com/package/@lit-labs/ssr) and your component definitions.
+Backlit ships a pre-compiled Go binary that embeds a WASM module. Inside that WASM module: [QuickJS](https://bellard.org/quickjs/) running [`@lit-labs/ssr`](https://www.npmjs.com/package/@lit-labs/ssr). On startup, the binary loads your component JS files and evaluates them inside QuickJS, registering your custom elements.
 
-When Drupal finishes rendering a page, Backlit's `SsrResponseSubscriber` intercepts the response, pipes the HTML through the binary's stdin, and reads Declarative Shadow DOM enhanced HTML from stdout. The binary uses a NUL-delimited read-loop protocol, so the WASM instance stays warm across renders.
+When Drupal finishes rendering a page, Backlit's `SsrResponseSubscriber` intercepts the response, pipes the HTML through the binary's stdin, and reads Declarative Shadow DOM enhanced HTML from stdout. The binary uses a NUL-delimited read-loop protocol, so the WASM instance and your component definitions stay warm across renders.
 
 ```
 First render:  ~350ms  (WASM cold start -- paid once per PHP-FPM worker)
@@ -34,21 +34,67 @@ Every render after:  ~0.32ms  (just pipe I/O)
 
 The binary auto-detects your platform. Supported: linux-x64, linux-arm64, darwin-x64, darwin-arm64, win32-x64, win32-arm64. Yes, we support Windows. No, we haven't tested it. Godspeed.
 
-## What gets rendered
+## Adding your components
 
-Every custom element tag name that has a definition baked into the WASM module gets its shadow DOM injected. Unknown elements pass through unchanged. Your `<div>`s are safe.
+Drop plain JavaScript files into one of these locations (checked in order):
 
-The default binary ships with example components (`<x-card>`, `<x-tabs>`, `<my-alert>`, etc.) from [lit-ssr-wasm](https://github.com/bennypowers/lit-ssr-wasm). To render your own components, you'll need to build a custom WASM module.
+1. **`$settings['backlit']['components_dir']`** in `settings.php`
+2. **Your active theme's `components/` directory** -- e.g., `themes/custom/my_theme/components/`
+3. **Any custom module's `js/` directory** -- e.g., `modules/custom/my_components/js/`
 
-## Building custom components
+Backlit auto-discovers element names from `customElements.define()` calls. No configuration beyond placing the files.
+
+### What the JS looks like
+
+Standard LitElement, minus `import` statements (the WASM engine provides `LitElement`, `html`, `css`, `classMap`, etc. as globals):
+
+```js
+class MyCard extends LitElement {
+  static properties = {
+    heading: { type: String },
+  };
+
+  static styles = css`
+    :host { display: block; border: 1px solid #ccc; border-radius: 8px; }
+    #header { padding: 16px; font-weight: 600; }
+    #body { padding: 16px; }
+  `;
+
+  constructor() {
+    super();
+    this.heading = '';
+  }
+
+  render() {
+    return html`
+      <div id="header">${this.heading}</div>
+      <div id="body"><slot></slot></div>
+    `;
+  }
+}
+customElements.define('my-card', MyCard);
+```
+
+Then use it in any Drupal content (Full HTML format):
+
+```html
+<my-card heading="Dashboard">
+  <p>All systems operational.</p>
+</my-card>
+```
+
+No build step, no npm, no bundler. Components stay registered across renders -- the WASM engine evaluates your JS once and keeps the definitions warm.
+
+### Compiled mode (advanced)
+
+For maximum performance, you can build a custom WASM module with your components baked in, skipping JS evaluation entirely:
 
 1. Clone [lit-ssr-wasm](https://github.com/bennypowers/lit-ssr-wasm)
-2. Write your LitElement components in `src/components/`
+2. Write your components in `src/components/`
 3. Import them in `src/entry.ts`, add tag names to `KNOWN_ELEMENTS`
 4. `npm run build` (requires [Javy](https://github.com/bytecodealliance/javy))
-5. Copy `dist/lit-ssr-builtin.wasm` to `go/lit-ssr.wasm`
-6. `cd go && make linux-x64` (or your target platform)
-7. Replace the binary in Backlit's `bin/` directory
+5. Build the CLI: `cd go && make linux-x64`
+6. Replace the binary in Backlit's `bin/` directory
 
 ## Performance
 
