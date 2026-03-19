@@ -1,5 +1,7 @@
 # Backlit
 
+<img src="backlit.png" alt="Backlit" width="200">
+
 Server-render [Lit](https://lit.dev) web components from [Drupal](https://www.drupal.org/). No Node.js. No containers. No HTTP sidecar. Just a single binary that speaks NUL bytes.
 
 Backlit hooks into Drupal's response pipeline and renders every Lit web component with [Declarative Shadow DOM](https://html.spec.whatwg.org/multipage/scripting.html#attr-template-shadowrootmode). Users see styled, laid-out content on first paint -- before any JavaScript loads. Disable JS entirely and the components still render. That is the way of the Lit.
