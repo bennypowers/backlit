@@ -1,0 +1,5 @@
+name: Backlit
+description: 'Server-render Lit web components from Drupal. No Node.js. No containers. Just vibes and NUL bytes.'
+package: Web Components
+type: module
+core_version_requirement: ^10 || ^11

@@ -1,0 +1,9 @@
+services:
+  backlit.renderer:
+    class: Drupal\backlit\Service\LitSsrRenderer
+
+  backlit.response_subscriber:
+    class: Drupal\backlit\EventSubscriber\SsrResponseSubscriber
+    arguments: ['@backlit.renderer']
+    tags:
+      - { name: event_subscriber }
