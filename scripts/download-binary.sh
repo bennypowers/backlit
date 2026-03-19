@@ -24,7 +24,7 @@ case "$ARCH" in
   *) echo "backlit: unsupported architecture: $ARCH" >&2; exit 1 ;;
 esac
 
-BINARY="lit-ssr-${PLATFORM_OS}-${PLATFORM_ARCH}"
+BINARY="lit-ssr-runtime-${PLATFORM_OS}-${PLATFORM_ARCH}"
 if [ "$PLATFORM_OS" = "win32" ]; then
   BINARY="${BINARY}.exe"
 fi

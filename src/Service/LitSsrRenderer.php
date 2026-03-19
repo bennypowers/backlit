@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace Drupal\backlit\Service;
 
 /**
- * Manages a persistent lit-ssr process for rendering web components.
+ * Manages a persistent lit-ssr-runtime process for rendering web components.
  *
- * The lit-ssr binary embeds a WASM module containing QuickJS, the Lit SSR
- * engine, and your component definitions. HTML goes in on stdin
- * (NUL-terminated), Declarative Shadow DOM comes out on stdout
- * (also NUL-terminated). The WASM instance stays warm across renders.
+ * The runtime binary loads component JS files at startup and evaluates them
+ * inside a WASM-embedded QuickJS engine. Components stay registered across
+ * renders via the read-loop protocol. HTML goes in on stdin (NUL-terminated),
+ * Declarative Shadow DOM comes out on stdout (also NUL-terminated).
  *
  * Cold start: ~350ms (once). Warm renders: ~0.32ms (forever after).
  * The drop is always moving, but your shadow DOM renders instantly.
@@ -24,12 +24,7 @@ final class LitSsrRenderer {
   private array $pipes = [];
 
   /**
-   * Render HTML through the lit-ssr WASM binary.
-   *
-   * Pipes the entire response HTML through the binary. Every custom element
-   * with a registered definition gets its shadow DOM injected as a
-   * <template shadowrootmode="open"> element. Elements without definitions
-   * pass through unchanged -- no harm, no foul.
+   * Render HTML through the lit-ssr runtime binary.
    *
    * @param string $html
    *   The HTML string containing web components to render.
@@ -43,9 +38,6 @@ final class LitSsrRenderer {
       $this->ensureProcess();
     }
     catch (\RuntimeException $e) {
-      // If the binary isn't available, return the original HTML.
-      // The components will still work client-side, they just won't
-      // have the sweet sweet instant first paint.
       return $html;
     }
 
@@ -61,10 +53,7 @@ final class LitSsrRenderer {
   }
 
   /**
-   * Start the lit-ssr process if not already running.
-   *
-   * The process stays alive across renders within the same PHP-FPM worker.
-   * First call pays the cold start (~350ms). Every subsequent call: ~0.32ms.
+   * Start the lit-ssr-runtime process if not already running.
    */
   private function ensureProcess(): void {
     if ($this->process !== NULL && proc_get_status($this->process)['running']) {
@@ -76,8 +65,15 @@ final class LitSsrRenderer {
       throw new \RuntimeException("Backlit binary not found: $binary. Run: composer run post-install-cmd");
     }
 
+    $componentsDir = self::getComponentsDir();
+    if ($componentsDir === NULL) {
+      throw new \RuntimeException('Backlit: no components directory configured. Set backlit.components_dir in settings.php or place JS files in a "components" directory next to your custom theme.');
+    }
+
+    $cmd = [$binary, '--dir', $componentsDir];
+
     $this->process = proc_open(
-      [$binary],
+      $cmd,
       [
         0 => ['pipe', 'r'],
         1 => ['pipe', 'w'],
@@ -87,18 +83,56 @@ final class LitSsrRenderer {
     );
 
     if (!is_resource($this->process)) {
-      throw new \RuntimeException('Failed to start lit-ssr process. Check file permissions on the binary.');
+      throw new \RuntimeException('Failed to start lit-ssr-runtime process.');
     }
+  }
+
+  /**
+   * Find the directory containing component JS files.
+   *
+   * Checks, in order:
+   * 1. Drupal settings: $settings['backlit']['components_dir']
+   * 2. The active theme's 'components' subdirectory
+   * 3. modules/custom/ * /js/ (first match)
+   *
+   * Returns NULL if no directory with JS files is found.
+   */
+  private static function getComponentsDir(): ?string {
+    // 1. Explicit config in settings.php
+    $settings = \Drupal::service('settings');
+    $backlit = $settings->get('backlit', []);
+    if (!empty($backlit['components_dir'])) {
+      $dir = $backlit['components_dir'];
+      if (is_dir($dir) && glob("$dir/*.js")) {
+        return $dir;
+      }
+    }
+
+    // 2. Active theme's components/ directory
+    $theme = \Drupal::theme()->getActiveTheme();
+    $themeDir = $theme->getPath() . '/components';
+    if (is_dir($themeDir) && glob("$themeDir/*.js")) {
+      return $themeDir;
+    }
+
+    // 3. First custom module with a js/ directory
+    $modulesDir = DRUPAL_ROOT . '/modules/custom';
+    if (is_dir($modulesDir)) {
+      foreach (scandir($modulesDir) as $mod) {
+        $jsDir = "$modulesDir/$mod/js";
+        if (is_dir($jsDir) && glob("$jsDir/*.js")) {
+          return $jsDir;
+        }
+      }
+    }
+
+    return NULL;
   }
 
   /**
    * Resolve the platform-specific binary path.
    *
-   * Binaries follow the naming convention lit-ssr-{os}-{arch}:
-   *   linux-x64, linux-arm64, darwin-x64, darwin-arm64,
-   *   win32-x64, win32-arm64
-   *
-   * Yes, we support Windows. No, we haven't tested it. Godspeed.
+   * Uses lit-ssr-runtime-{os}-{arch} (the runtime binary, not builtin).
    */
   private static function getBinaryPath(): string {
     $binDir = __DIR__ . '/../../bin';
@@ -116,7 +150,7 @@ final class LitSsrRenderer {
       default => throw new \RuntimeException('Unsupported architecture: ' . php_uname('m')),
     };
 
-    $name = "lit-ssr-$os-$arch";
+    $name = "lit-ssr-runtime-$os-$arch";
     if ($os === 'win32') {
       $name .= '.exe';
     }
