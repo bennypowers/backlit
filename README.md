@@ -150,6 +150,9 @@ Only Lit. The SSR engine is `@lit-labs/ssr`, which understands Lit's template sy
 **What about caching?**
 Backlit operates on every response. If you have Drupal's page cache enabled, the rendered HTML (with DSD) gets cached, so subsequent requests skip the binary entirely. This is the recommended setup.
 
+**What about BigPipe?**
+Backlit runs in a `KernelEvents::RESPONSE` subscriber, which processes the initial HTML response before it is sent to the browser. BigPipe replaces placeholder markup with real content *after* that initial response, streaming replacement `<script>` tags that swap in the final HTML on the client. Web components inside BigPipe-delivered placeholders will not be server-rendered by Backlit, since those fragments arrive after the response subscriber has already run. Components will still render client-side once their JavaScript loads, but they will not benefit from Declarative Shadow DOM on first paint. If your site relies heavily on BigPipe for lazy block rendering and those blocks contain web components, be aware of this limitation.
+
 **Can I use this in production?**
 The binary is statically linked with no runtime dependencies. The protocol is simple (NUL-delimited pipes). The failure mode is graceful (returns original HTML). So... probably? But this is still early days. File issues, send PRs, report back.
 
