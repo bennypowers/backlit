@@ -45,8 +45,13 @@ final class LitSsrRenderer {
     fflush($this->pipes[0]);
 
     $result = '';
-    while (($ch = fread($this->pipes[1], 1)) !== FALSE && $ch !== "\0" && $ch !== '') {
-      $result .= $ch;
+    while (($chunk = fread($this->pipes[1], 8192)) !== FALSE && $chunk !== '') {
+      $nulPos = strpos($chunk, "\0");
+      if ($nulPos !== FALSE) {
+        $result .= substr($chunk, 0, $nulPos);
+        break;
+      }
+      $result .= $chunk;
     }
 
     return $result ?: $html;
@@ -65,12 +70,16 @@ final class LitSsrRenderer {
       throw new \RuntimeException("Backlit binary not found: $binary. Run: composer run post-install-cmd");
     }
 
-    $componentsDir = self::getComponentsDir();
-    if ($componentsDir === NULL) {
-      throw new \RuntimeException('Backlit: no components directory configured. Set backlit.components_dir in settings.php or place JS files in a "components" directory next to your custom theme.');
+    $files = self::getComponentFiles();
+    if ($files === []) {
+      throw new \RuntimeException('Backlit: no component JS files found. Set backlit.components_dir in settings.php or place JS files in your theme\'s components/ directory.');
     }
 
-    $cmd = [$binary, '--dir', $componentsDir];
+    $cmd = [$binary];
+    foreach ($files as $file) {
+      $cmd[] = '--components';
+      $cmd[] = $file;
+    }
 
     $this->process = proc_open(
       $cmd,
@@ -88,45 +97,51 @@ final class LitSsrRenderer {
   }
 
   /**
-   * Find the directory containing component JS files.
+   * Collect component JS files from all configured sources.
    *
-   * Checks, in order:
+   * Aggregates files from:
    * 1. Drupal settings: $settings['backlit']['components_dir']
    * 2. The active theme's 'components' subdirectory
-   * 3. modules/custom/ * /js/ (first match)
+   * 3. Every custom module's js/ directory
    *
-   * Returns NULL if no directory with JS files is found.
+   * @return string[]
+   *   Absolute paths to JS files.
    */
-  private static function getComponentsDir(): ?string {
+  private static function getComponentFiles(): array {
+    $files = [];
+
     // 1. Explicit config in settings.php
     $settings = \Drupal::service('settings');
     $backlit = $settings->get('backlit', []);
     if (!empty($backlit['components_dir'])) {
       $dir = $backlit['components_dir'];
-      if (is_dir($dir) && glob("$dir/*.js")) {
-        return $dir;
+      if (is_dir($dir)) {
+        $files = array_merge($files, glob("$dir/*.js") ?: []);
       }
     }
 
     // 2. Active theme's components/ directory
     $theme = \Drupal::theme()->getActiveTheme();
     $themeDir = $theme->getPath() . '/components';
-    if (is_dir($themeDir) && glob("$themeDir/*.js")) {
-      return $themeDir;
+    if (is_dir($themeDir)) {
+      $files = array_merge($files, glob("$themeDir/*.js") ?: []);
     }
 
-    // 3. First custom module with a js/ directory
+    // 3. All custom modules with a js/ directory
     $modulesDir = DRUPAL_ROOT . '/modules/custom';
     if (is_dir($modulesDir)) {
       foreach (scandir($modulesDir) as $mod) {
+        if ($mod === '.' || $mod === '..') {
+          continue;
+        }
         $jsDir = "$modulesDir/$mod/js";
-        if (is_dir($jsDir) && glob("$jsDir/*.js")) {
-          return $jsDir;
+        if (is_dir($jsDir)) {
+          $files = array_merge($files, glob("$jsDir/*.js") ?: []);
         }
       }
     }
 
-    return NULL;
+    return $files;
   }
 
   /**
