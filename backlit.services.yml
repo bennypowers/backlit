@@ -4,6 +4,6 @@ services:
 
   backlit.response_subscriber:
     class: Drupal\backlit\EventSubscriber\SsrResponseSubscriber
-    arguments: ['@backlit.renderer']
+    arguments: ['@backlit.renderer', '@router.admin_context']
     tags:
       - { name: event_subscriber }

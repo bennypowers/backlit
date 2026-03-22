@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace Drupal\backlit\EventSubscriber;
 
 use Drupal\backlit\Service\LitSsrRenderer;
+use Drupal\Core\Routing\AdminContext;
 use Drupal\node\NodeInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpKernel\Event\ResponseEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
+use Symfony\Component\Routing\RouteObjectInterface;
 
 /**
  * Post-processes page markup through the lit-ssr WASM binary.
@@ -26,6 +28,7 @@ final class SsrResponseSubscriber implements EventSubscriberInterface {
 
   public function __construct(
     private readonly LitSsrRenderer $renderer,
+    private readonly AdminContext $adminContext,
   ) {}
 
   /**
@@ -43,13 +46,10 @@ final class SsrResponseSubscriber implements EventSubscriberInterface {
   public function onResponse(ResponseEvent $event): void {
     $request = $event->getRequest();
     $response = $event->getResponse();
-    $path = $request->getPathInfo();
 
-    // Skip admin pages, content editing, and non-HTML responses.
-    if (str_starts_with($path, '/admin/')
-     || str_starts_with($path, '/node/add/')
-     || str_starts_with($path, '/editor/')
-     || str_starts_with($path, '/block/')) {
+    // Skip admin routes and non-HTML responses.
+    $route = $request->attributes->get(RouteObjectInterface::ROUTE_OBJECT);
+    if ($route && $this->adminContext->isAdminRoute($route)) {
       return;
     }
 
