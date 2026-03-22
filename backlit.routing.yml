@@ -1,0 +1,7 @@
+backlit.settings:
+  path: '/admin/config/content/backlit'
+  defaults:
+    _form: '\Drupal\backlit\Form\BacklitSettingsForm'
+    _title: 'Backlit'
+  requirements:
+    _permission: 'administer site configuration'

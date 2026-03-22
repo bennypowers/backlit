@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Drupal\backlit\EventSubscriber;
 
 use Drupal\backlit\Service\LitSsrRenderer;
+use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Routing\AdminContext;
 use Drupal\node\NodeInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
@@ -20,15 +21,16 @@ use Symfony\Component\Routing\RouteObjectInterface;
  * server-rendered with Declarative Shadow DOM. The user sees styled
  * content on first paint, before any JavaScript loads.
  *
- * Respects the backlit_ssr field on content entities: if an author
- * has disabled SSR for a page, we leave it alone. Because editorial
- * autonomy matters, even for shadow roots.
+ * Only processes pages whose content type is enabled in the Backlit
+ * configuration. Non-node routes (Views, taxonomy, etc.) are not
+ * processed.
  */
 final class SsrResponseSubscriber implements EventSubscriberInterface {
 
   public function __construct(
     private readonly LitSsrRenderer $renderer,
     private readonly AdminContext $adminContext,
+    private readonly ConfigFactoryInterface $configFactory,
   ) {}
 
   /**
@@ -58,11 +60,13 @@ final class SsrResponseSubscriber implements EventSubscriberInterface {
       return;
     }
 
-    // Respect the backlit_ssr field: if the author disabled SSR, skip it.
+    // Only process pages for enabled content types.
     $node = $request->attributes->get('node');
-    if ($node instanceof NodeInterface
-     && $node->hasField('backlit_ssr')
-     && !(bool) $node->get('backlit_ssr')->value) {
+    if (!$node instanceof NodeInterface) {
+      return;
+    }
+    $enabled = $this->configFactory->get('backlit.settings')->get('enabled_bundles') ?? [];
+    if (!in_array($node->bundle(), $enabled, TRUE)) {
       return;
     }
 
