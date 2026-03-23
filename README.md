@@ -23,7 +23,7 @@ cd web/modules/contrib/backlit
 
 ## How it works
 
-Backlit ships a pre-compiled Go binary that embeds a WASM module. Inside that WASM module: [QuickJS](https://bellard.org/quickjs/) running [`@lit-labs/ssr`](https://www.npmjs.com/package/@lit-labs/ssr). On startup, the binary loads your component JS files and evaluates them inside QuickJS, registering your custom elements.
+Backlit ships a pre-compiled Go binary that embeds a WASM module. Inside that WASM module: [QuickJS](https://bellard.org/quickjs/) running [`@lit-labs/ssr`](https://www.npmjs.com/package/@lit-labs/ssr). On startup, the binary bundles your component source files (JS or TS) with esbuild, evaluates the bundle inside QuickJS, and registers your custom elements.
 
 When Drupal finishes rendering a page, Backlit's `SsrResponseSubscriber` intercepts the response, pipes the HTML through the binary's stdin, and reads Declarative Shadow DOM enhanced HTML from stdout. The binary uses a NUL-delimited read-loop protocol, so the WASM instance and your component definitions stay warm across renders.
 
@@ -36,34 +36,31 @@ The binary auto-detects your platform. Supported: linux-x64, linux-arm64, darwin
 
 ## Adding your components
 
-Drop plain JavaScript files into one of these locations (checked in order):
+Drop JS or TS source files into one of these locations. Backlit aggregates component files from all of them:
 
 1. **`$settings['backlit']['components_dir']`** in `settings.php`
 2. **Your active theme's `components/` directory** -- e.g., `themes/custom/my_theme/components/`
 3. **Any custom module's `js/` directory** -- e.g., `modules/custom/my_components/js/`
 
-Backlit auto-discovers element names from `customElements.define()` calls. No configuration beyond placing the files.
+The binary bundles your source files with esbuild at startup, resolving imports from `node_modules`. Declaration files (`.d.ts`) and test files (`.test.ts`, `.test.js`) are excluded automatically.
 
-### What the JS looks like
+### What the source looks like
 
-Standard LitElement, minus `import` statements (the WASM engine provides `LitElement`, `html`, `css`, `classMap`, etc. as globals):
+Standard LitElement with standard imports:
 
-```js
+```ts
+import { LitElement, html, css } from 'lit';
+import { customElement, property } from 'lit/decorators.js';
+
+@customElement('my-card')
 class MyCard extends LitElement {
-  static properties = {
-    heading: { type: String },
-  };
+  @property() heading = '';
 
   static styles = css`
     :host { display: block; border: 1px solid #ccc; border-radius: 8px; }
     #header { padding: 16px; font-weight: 600; }
     #body { padding: 16px; }
   `;
-
-  constructor() {
-    super();
-    this.heading = '';
-  }
 
   render() {
     return html`
@@ -72,7 +69,6 @@ class MyCard extends LitElement {
     `;
   }
 }
-customElements.define('my-card', MyCard);
 ```
 
 Then use it in any Drupal content (Full HTML format):
@@ -83,18 +79,11 @@ Then use it in any Drupal content (Full HTML format):
 </my-card>
 ```
 
-No build step, no npm, no bundler. Components stay registered across renders -- the WASM engine evaluates your JS once and keeps the definitions warm.
+Components stay registered across renders -- the binary bundles and evaluates your source once, then keeps the definitions warm.
 
-### Compiled mode (advanced)
+### Pre-bundled mode (advanced)
 
-For maximum performance, you can build a custom WASM module with your components baked in, skipping JS evaluation entirely:
-
-1. Clone [lit-ssr-wasm](https://github.com/bennypowers/lit-ssr-wasm)
-2. Write your components in `src/components/`
-3. Import them in `src/entry.ts`, add tag names to `KNOWN_ELEMENTS`
-4. `npm run build` (requires [Javy](https://github.com/bytecodealliance/javy))
-5. Build the CLI: `cd go && make linux-x64`
-6. Replace the binary in Backlit's `bin/` directory
+If you prefer to bundle components yourself, you can pass a pre-built JS bundle via `$settings['backlit']['bundle']` in `settings.php`. The binary will skip esbuild and evaluate the bundle directly.
 
 ## Performance
 
@@ -113,7 +102,8 @@ For comparison, the [previous approach](https://bennypowers.dev/posts/drupal-lit
 - Drupal 10 or 11
 - PHP 8.1+
 - A server that can run a binary (so, any server)
-- No PHP extensions, no PECL, no FFI, no containers, no npm
+- `node_modules` with `lit` installed (esbuild resolves imports at startup)
+- No PHP extensions, no PECL, no FFI, no containers
 
 ## Graceful degradation
 

@@ -185,7 +185,7 @@ HTML;
       default => return NULL,
     };
 
-    $name = "lit-ssr-runtime-$os-$arch";
+    $name = "lit-ssr-$os-$arch";
     if ($os === 'win32') {
       $name .= '.exe';
     }

@@ -5,15 +5,13 @@ declare(strict_types=1);
 namespace Drupal\backlit\Service;
 
 /**
- * Manages a persistent lit-ssr-runtime process for rendering web components.
+ * Manages a persistent lit-ssr process for rendering web components.
  *
- * The runtime binary loads component JS files at startup and evaluates them
- * inside a WASM-embedded QuickJS engine. Components stay registered across
- * renders via the read-loop protocol. HTML goes in on stdin (NUL-terminated),
- * Declarative Shadow DOM comes out on stdout (also NUL-terminated).
- *
- * Cold start: ~350ms (once). Warm renders: ~0.32ms (forever after).
- * The drop is always moving, but your shadow DOM renders instantly.
+ * The lit-ssr binary bundles component source files with esbuild at startup,
+ * then evaluates them inside a WASM-embedded QuickJS engine. Components stay
+ * registered across renders via the read-loop protocol. HTML goes in on stdin
+ * (NUL-terminated), Declarative Shadow DOM comes out on stdout (also
+ * NUL-terminated).
  */
 final class LitSsrRenderer {
 
@@ -58,7 +56,7 @@ final class LitSsrRenderer {
   }
 
   /**
-   * Start the lit-ssr-runtime process if not already running.
+   * Start the lit-ssr process if not already running.
    */
   private function ensureProcess(): void {
     if ($this->process !== NULL && proc_get_status($this->process)['running']) {
@@ -72,14 +70,10 @@ final class LitSsrRenderer {
 
     $files = self::getComponentFiles();
     if ($files === []) {
-      throw new \RuntimeException('Backlit: no component JS files found. Set backlit.components_dir in settings.php or place JS files in your theme\'s components/ directory.');
+      throw new \RuntimeException('Backlit: no component files found. Set backlit.components_dir in settings.php or place source files in your theme\'s components/ directory.');
     }
 
-    $cmd = [$binary];
-    foreach ($files as $file) {
-      $cmd[] = '--components';
-      $cmd[] = $file;
-    }
+    $cmd = array_merge([$binary], $files);
 
     $this->process = proc_open(
       $cmd,
@@ -97,15 +91,15 @@ final class LitSsrRenderer {
   }
 
   /**
-   * Collect component JS files from all configured sources.
+   * Collect component source files from all configured sources.
    *
-   * Aggregates files from:
+   * Aggregates JS and TS files from:
    * 1. Drupal settings: $settings['backlit']['components_dir']
    * 2. The active theme's 'components' subdirectory
    * 3. Every custom module's js/ directory
    *
    * @return string[]
-   *   Absolute paths to JS files.
+   *   Paths to source files.
    */
   private static function getComponentFiles(): array {
     $files = [];
@@ -116,7 +110,7 @@ final class LitSsrRenderer {
     if (!empty($backlit['components_dir'])) {
       $dir = $backlit['components_dir'];
       if (is_dir($dir)) {
-        $files = array_merge($files, glob("$dir/*.js") ?: []);
+        $files = array_merge($files, self::globSourceFiles($dir));
       }
     }
 
@@ -124,7 +118,7 @@ final class LitSsrRenderer {
     $theme = \Drupal::theme()->getActiveTheme();
     $themeDir = $theme->getPath() . '/components';
     if (is_dir($themeDir)) {
-      $files = array_merge($files, glob("$themeDir/*.js") ?: []);
+      $files = array_merge($files, self::globSourceFiles($themeDir));
     }
 
     // 3. All custom modules with a js/ directory
@@ -136,7 +130,7 @@ final class LitSsrRenderer {
         }
         $jsDir = "$modulesDir/$mod/js";
         if (is_dir($jsDir)) {
-          $files = array_merge($files, glob("$jsDir/*.js") ?: []);
+          $files = array_merge($files, self::globSourceFiles($jsDir));
         }
       }
     }
@@ -145,9 +139,29 @@ final class LitSsrRenderer {
   }
 
   /**
-   * Resolve the platform-specific binary path.
+   * Glob JS and TS source files from a directory.
    *
-   * Uses lit-ssr-runtime-{os}-{arch} (the runtime binary, not builtin).
+   * Excludes .d.ts and .test.ts/.test.js files to match the CLI behavior.
+   *
+   * @return string[]
+   */
+  private static function globSourceFiles(string $dir): array {
+    $files = [];
+    foreach (['*.js', '*.ts'] as $pattern) {
+      foreach (glob("$dir/$pattern") ?: [] as $file) {
+        if (str_ends_with($file, '.d.ts')
+         || str_ends_with($file, '.test.ts')
+         || str_ends_with($file, '.test.js')) {
+          continue;
+        }
+        $files[] = $file;
+      }
+    }
+    return $files;
+  }
+
+  /**
+   * Resolve the platform-specific binary path.
    */
   private static function getBinaryPath(): string {
     $binDir = __DIR__ . '/../../bin';
@@ -165,7 +179,7 @@ final class LitSsrRenderer {
       default => throw new \RuntimeException('Unsupported architecture: ' . php_uname('m')),
     };
 
-    $name = "lit-ssr-runtime-$os-$arch";
+    $name = "lit-ssr-$os-$arch";
     if ($os === 'win32') {
       $name .= '.exe';
     }

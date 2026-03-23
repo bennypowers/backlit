@@ -33,7 +33,7 @@ class LitSsrRendererTest extends TestCase {
 
     // Should contain the platform-specific binary name.
     $this->assertMatchesRegularExpression(
-      '#bin/lit-ssr-runtime-(linux|darwin|win32)-(x64|arm64)#',
+      '#bin/lit-ssr-(linux|darwin|win32)-(x64|arm64)#',
       $path,
     );
   }
@@ -57,7 +57,7 @@ class LitSsrRendererTest extends TestCase {
       default => $this->markTestSkipped('Unsupported arch for this test'),
     };
 
-    $this->assertStringContainsString("lit-ssr-runtime-$expectedOs-$expectedArch", $path);
+    $this->assertStringContainsString("lit-ssr-$expectedOs-$expectedArch", $path);
   }
 
   /**
@@ -143,6 +143,33 @@ class LitSsrRendererTest extends TestCase {
     unlink("$themeComponents/b.js");
     rmdir($themeComponents);
     rmdir($themeBase);
+  }
+
+  /**
+   * @covers ::getComponentFiles
+   */
+  public function testGetComponentFilesIncludesTypeScript(): void {
+    $tmpDir = sys_get_temp_dir() . '/backlit-test-ts-' . uniqid();
+    mkdir($tmpDir, 0755, TRUE);
+    file_put_contents("$tmpDir/my-card.ts", '// component');
+    file_put_contents("$tmpDir/my-card.d.ts", '// declaration');
+    file_put_contents("$tmpDir/my-card.test.ts", '// test');
+
+    $this->setUpDrupalContainer(
+      ['components_dir' => $tmpDir],
+      '/nonexistent/theme/path',
+    );
+
+    $files = self::callPrivateStatic('getComponentFiles');
+    $this->assertContains("$tmpDir/my-card.ts", $files);
+    $this->assertNotContains("$tmpDir/my-card.d.ts", $files);
+    $this->assertNotContains("$tmpDir/my-card.test.ts", $files);
+
+    // Cleanup.
+    unlink("$tmpDir/my-card.ts");
+    unlink("$tmpDir/my-card.d.ts");
+    unlink("$tmpDir/my-card.test.ts");
+    rmdir($tmpDir);
   }
 
   /**

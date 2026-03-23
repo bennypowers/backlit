@@ -43,7 +43,7 @@ jobs:
           composer config repositories.backlit path ../backlit
           composer require bennypowers/backlit:@dev drupal/core-dev:${{ matrix.drupal-version }} --no-interaction
 
-      - name: Download lit-ssr-runtime binary
+      - name: Download lit-ssr binary
         run: bash backlit/scripts/download-binary.sh
 
       - name: Run unit tests
