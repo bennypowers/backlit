@@ -1,0 +1,4 @@
+administer backlit settings:
+  title: 'Administer Backlit settings'
+  description: 'Configure which content types get Lit SSR with Declarative Shadow DOM.'
+  restrict access: true

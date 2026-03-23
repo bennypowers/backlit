@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php-version: ['8.1', '8.2', '8.3']
+        drupal-version: ['~10.3', '~11.0']
+        exclude:
+          # Drupal 11 requires PHP 8.3+
+          - drupal-version: '~11.0'
+            php-version: '8.1'
+          - drupal-version: '~11.0'
+            php-version: '8.2'
+
+    name: PHP ${{ matrix.php-version }} / Drupal ${{ matrix.drupal-version }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          path: backlit
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          extensions: dom, mbstring
+          tools: composer:v2
+
+      - name: Create Drupal project
+        run: |
+          composer create-project drupal/recommended-project:${{ matrix.drupal-version }} drupal --no-interaction --no-install
+          cd drupal
+          composer config minimum-stability dev
+          composer config repositories.backlit path ../backlit
+          composer require bennypowers/backlit:@dev drupal/core-dev:${{ matrix.drupal-version }} -W --no-interaction
+
+      - name: Download lit-ssr binary
+        run: bash backlit/scripts/download-binary.sh
+
+      - name: Install lit for integration tests
+        working-directory: drupal
+        run: npm init -y && npm install lit
+
+      - name: Run unit tests
+        working-directory: drupal
+        env:
+          SIMPLETEST_BASE_URL: http://localhost
+          SIMPLETEST_DB: sqlite://localhost/sites/default/files/.ht.sqlite
+          SYMFONY_DEPRECATIONS_HELPER: disabled
+        run: |
+          php vendor/bin/phpunit \
+            --bootstrap web/core/tests/bootstrap.php \
+            web/modules/contrib/backlit/tests/src/Unit
+
+      - name: Run integration tests
+        working-directory: drupal
+        env:
+          SIMPLETEST_BASE_URL: http://localhost
+          SIMPLETEST_DB: sqlite://localhost/sites/default/files/.ht.sqlite
+          SYMFONY_DEPRECATIONS_HELPER: disabled
+        run: |
+          php vendor/bin/phpunit \
+            --bootstrap web/core/tests/bootstrap.php \
+            web/modules/contrib/backlit/tests/src/Integration

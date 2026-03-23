@@ -1,0 +1,10 @@
+backlit.settings:
+  type: config_object
+  label: 'Backlit settings'
+  mapping:
+    enabled_bundles:
+      type: sequence
+      label: 'Enabled content types'
+      sequence:
+        type: string
+        label: 'Bundle machine name'

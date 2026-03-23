@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Run from a Drupal root that has this module installed:
+    cd /path/to/drupal
+    php vendor/bin/phpunit --group backlit
+  Or use Drupal's core phpunit.xml.dist with the backlit group filter.
+-->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/10.5/phpunit.xsd"
+         colors="true">
+  <testsuites>
+    <testsuite name="unit">
+      <directory>tests/src/Unit</directory>
+    </testsuite>
+    <testsuite name="integration">
+      <directory>tests/src/Integration</directory>
+    </testsuite>
+  </testsuites>
+</phpunit>

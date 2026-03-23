@@ -1,0 +1,5 @@
+backlit.settings:
+  title: 'Backlit'
+  description: 'Configure which content types get Lit SSR with Declarative Shadow DOM.'
+  route_name: backlit.settings
+  parent: system.admin_config_content

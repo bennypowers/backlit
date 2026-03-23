@@ -5,7 +5,7 @@ set -euo pipefail
 # Called automatically by Composer post-install/post-update.
 # Can also be run manually: ./scripts/download-binary.sh [version]
 
-VERSION="${1:-v0.0.2}"
+VERSION="${1:-v0.2.0}"
 BIN_DIR="$(cd "$(dirname "$0")/.." && pwd)/bin"
 
 OS="$(uname -s)"
@@ -24,7 +24,7 @@ case "$ARCH" in
   *) echo "backlit: unsupported architecture: $ARCH" >&2; exit 1 ;;
 esac
 
-BINARY="lit-ssr-runtime-${PLATFORM_OS}-${PLATFORM_ARCH}"
+BINARY="lit-ssr-${PLATFORM_OS}-${PLATFORM_ARCH}"
 if [ "$PLATFORM_OS" = "win32" ]; then
   BINARY="${BINARY}.exe"
 fi
