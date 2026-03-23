@@ -10,6 +10,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         php-version: ['8.1', '8.2', '8.3']
         drupal-version: ['~10.3', '~11.0']
@@ -47,13 +48,18 @@ jobs:
         run: bash backlit/scripts/download-binary.sh
 
       - name: Run unit tests
+        working-directory: drupal
         run: |
-          cd drupal
-          php vendor/bin/phpunit --group backlit --testsuite unit \
+          php vendor/bin/phpunit \
+            --bootstrap vendor/autoload.php \
+            --group backlit \
+            --testsuite unit \
             --configuration web/modules/contrib/backlit/phpunit.xml
 
       - name: Run integration tests
+        working-directory: drupal
         run: |
-          cd drupal
-          php vendor/bin/phpunit --group integration \
+          php vendor/bin/phpunit \
+            --bootstrap vendor/autoload.php \
+            --group integration \
             --configuration web/modules/contrib/backlit/phpunit.xml
