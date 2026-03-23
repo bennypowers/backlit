@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Drupal\backlit\Service;
 
 /**
- * Manages a persistent lit-ssr-runtime process for rendering web components.
+ * Manages a persistent lit-ssr process for rendering web components.
  *
  * The runtime binary loads component JS files at startup and evaluates them
  * inside a WASM-embedded QuickJS engine. Components stay registered across
@@ -24,7 +24,7 @@ final class LitSsrRenderer {
   private array $pipes = [];
 
   /**
-   * Render HTML through the lit-ssr runtime binary.
+   * Render HTML through the lit-ssr binary.
    *
    * @param string $html
    *   The HTML string containing web components to render.
@@ -53,7 +53,7 @@ final class LitSsrRenderer {
   }
 
   /**
-   * Start the lit-ssr-runtime process if not already running.
+   * Start the lit-ssr process if not already running.
    */
   private function ensureProcess(): void {
     if ($this->process !== NULL && proc_get_status($this->process)['running']) {
@@ -83,7 +83,7 @@ final class LitSsrRenderer {
     );
 
     if (!is_resource($this->process)) {
-      throw new \RuntimeException('Failed to start lit-ssr-runtime process.');
+      throw new \RuntimeException('Failed to start lit-ssr process.');
     }
   }
 
@@ -132,7 +132,7 @@ final class LitSsrRenderer {
   /**
    * Resolve the platform-specific binary path.
    *
-   * Uses lit-ssr-runtime-{os}-{arch} (the runtime binary, not builtin).
+   * Uses lit-ssr-{os}-{arch}.
    */
   private static function getBinaryPath(): string {
     $binDir = __DIR__ . '/../../bin';
@@ -150,7 +150,7 @@ final class LitSsrRenderer {
       default => throw new \RuntimeException('Unsupported architecture: ' . php_uname('m')),
     };
 
-    $name = "lit-ssr-runtime-$os-$arch";
+    $name = "lit-ssr-$os-$arch";
     if ($os === 'win32') {
       $name .= '.exe';
     }
