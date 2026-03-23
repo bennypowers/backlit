@@ -215,11 +215,13 @@ HTML;
    */
   private function findNodeModules(string $startDir): ?string {
     $dir = realpath($startDir);
-    while ($dir && $dir !== '/') {
+    $prevDir = '';
+    while ($dir && $dir !== $prevDir) {
       $candidate = "$dir/node_modules";
       if (is_dir("$candidate/lit")) {
         return $candidate;
       }
+      $prevDir = $dir;
       $dir = dirname($dir);
     }
     return NULL;

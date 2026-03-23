@@ -4,4 +4,4 @@ backlit.settings:
     _form: '\Drupal\backlit\Form\BacklitSettingsForm'
     _title: 'Backlit'
   requirements:
-    _permission: 'administer site configuration'
+    _permission: 'administer backlit settings'
