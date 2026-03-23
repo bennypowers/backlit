@@ -18,7 +18,6 @@ use Symfony\Component\HttpKernel\Event\ResponseEvent;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
 use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Component\Routing\Route;
-use Symfony\Component\Routing\RouteObjectInterface;
 
 /**
  * @coversDefaultClass \Drupal\backlit\EventSubscriber\SsrResponseSubscriber
@@ -230,7 +229,7 @@ class SsrResponseSubscriberTest extends TestCase {
   ): ResponseEvent {
     $attributes = new ParameterBag();
     if ($route !== NULL) {
-      $attributes->set(RouteObjectInterface::ROUTE_OBJECT, $route);
+      $attributes->set('_route_object', $route);
     }
     if ($node !== NULL) {
       $attributes->set('node', $node);

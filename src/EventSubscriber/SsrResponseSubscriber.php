@@ -11,7 +11,6 @@ use Drupal\node\NodeInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpKernel\Event\ResponseEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
-use Symfony\Component\Routing\RouteObjectInterface;
 
 /**
  * Post-processes page markup through the lit-ssr WASM binary.
@@ -50,7 +49,7 @@ final class SsrResponseSubscriber implements EventSubscriberInterface {
     $response = $event->getResponse();
 
     // Skip admin routes and non-HTML responses.
-    $route = $request->attributes->get(RouteObjectInterface::ROUTE_OBJECT);
+    $route = $request->attributes->get('_route_object');
     if ($route && $this->adminContext->isAdminRoute($route)) {
       return;
     }
