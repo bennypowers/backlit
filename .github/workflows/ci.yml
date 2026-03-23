@@ -41,7 +41,7 @@ jobs:
           cd drupal
           composer config minimum-stability dev
           composer config repositories.backlit path ../backlit
-          composer require bennypowers/backlit:@dev drupal/core-dev:${{ matrix.drupal-version }} --no-interaction
+          composer require bennypowers/backlit:@dev drupal/core-dev:${{ matrix.drupal-version }} -W --no-interaction
 
       - name: Download lit-ssr binary
         run: bash backlit/scripts/download-binary.sh
