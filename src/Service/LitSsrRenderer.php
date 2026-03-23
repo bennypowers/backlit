@@ -124,7 +124,7 @@ final class LitSsrRenderer implements LitSsrRendererInterface {
     // 3. All custom modules with a js/ directory
     $modulesDir = DRUPAL_ROOT . '/modules/custom';
     if (is_dir($modulesDir)) {
-      foreach (scandir($modulesDir) as $mod) {
+      foreach (scandir($modulesDir) ?: [] as $mod) {
         if ($mod === '.' || $mod === '..') {
           continue;
         }
