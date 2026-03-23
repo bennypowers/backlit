@@ -19,7 +19,7 @@ use PHPUnit\Framework\TestCase;
  */
 class SsrIntegrationTest extends TestCase {
 
-  private string $componentDir;
+  private string $componentDir = '';
 
   /**
    * {@inheritdoc}
