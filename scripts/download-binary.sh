@@ -5,7 +5,7 @@ set -euo pipefail
 # Called automatically by Composer post-install/post-update.
 # Can also be run manually: ./scripts/download-binary.sh [version]
 
-VERSION="${1:-v0.1.0}"
+VERSION="${1:-v0.2.0}"
 BIN_DIR="$(cd "$(dirname "$0")/.." && pwd)/bin"
 
 OS="$(uname -s)"
