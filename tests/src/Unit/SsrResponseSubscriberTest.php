@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Drupal\Tests\backlit\Unit;
 
 use Drupal\backlit\EventSubscriber\SsrResponseSubscriber;
-use Drupal\backlit\Service\LitSsrRenderer;
+use Drupal\backlit\Service\LitSsrRendererInterface;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Config\ImmutableConfig;
 use Drupal\Core\Routing\AdminContext;
@@ -26,7 +26,7 @@ use Symfony\Component\Routing\RouteObjectInterface;
  */
 class SsrResponseSubscriberTest extends TestCase {
 
-  private LitSsrRenderer $renderer;
+  private LitSsrRendererInterface $renderer;
 
   private AdminContext $adminContext;
 
@@ -40,7 +40,7 @@ class SsrResponseSubscriberTest extends TestCase {
   protected function setUp(): void {
     parent::setUp();
 
-    $this->renderer = $this->createMock(LitSsrRenderer::class);
+    $this->renderer = $this->createMock(LitSsrRendererInterface::class);
     $this->adminContext = $this->createMock(AdminContext::class);
     $this->configFactory = $this->createMock(ConfigFactoryInterface::class);
 

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Drupal\backlit\EventSubscriber;
 
-use Drupal\backlit\Service\LitSsrRenderer;
+use Drupal\backlit\Service\LitSsrRendererInterface;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Routing\AdminContext;
 use Drupal\node\NodeInterface;
@@ -28,7 +28,7 @@ use Symfony\Component\Routing\RouteObjectInterface;
 final class SsrResponseSubscriber implements EventSubscriberInterface {
 
   public function __construct(
-    private readonly LitSsrRenderer $renderer,
+    private readonly LitSsrRendererInterface $renderer,
     private readonly AdminContext $adminContext,
     private readonly ConfigFactoryInterface $configFactory,
   ) {}

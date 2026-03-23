@@ -175,7 +175,8 @@ class LitSsrRendererTest extends TestCase {
   /**
    * @covers ::render
    */
-  public function testRenderReturnsOriginalHtmlWhenBinaryMissing(): void {
+  public function testRenderReturnsOriginalHtmlWhenNoComponents(): void {
+    $this->setUpDrupalContainer([], '/nonexistent/theme/path');
     $renderer = new LitSsrRenderer();
     $html = '<rh-card>Hello</rh-card>';
 

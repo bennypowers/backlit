@@ -13,7 +13,7 @@ namespace Drupal\backlit\Service;
  * (NUL-terminated), Declarative Shadow DOM comes out on stdout (also
  * NUL-terminated).
  */
-final class LitSsrRenderer {
+final class LitSsrRenderer implements LitSsrRendererInterface {
 
   /** @var resource|null */
   private $process = NULL;
