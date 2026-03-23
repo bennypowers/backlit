@@ -29,14 +29,25 @@ class SsrIntegrationTest extends TestCase {
 
     $binaryPath = $this->findBinary();
     if ($binaryPath === NULL) {
-      $this->markTestSkipped('lit-ssr-runtime binary not installed. Run: composer run post-install-cmd');
+      $this->markTestSkipped('lit-ssr binary not installed. Run: composer run post-install-cmd');
     }
 
     // Create a temp directory with a simple LitElement component.
     $this->componentDir = sys_get_temp_dir() . '/backlit-integration-' . uniqid();
     mkdir($this->componentDir, 0755, TRUE);
 
+    // The component needs node_modules with lit for esbuild bundling.
+    // Create a symlink to the project's node_modules if available.
+    $projectRoot = dirname(__DIR__, 3);
+    $nodeModules = $this->findNodeModules($projectRoot);
+    if ($nodeModules === NULL) {
+      $this->markTestSkipped('node_modules with lit not found. Run: npm install lit');
+    }
+    symlink($nodeModules, "{$this->componentDir}/node_modules");
+
     file_put_contents("{$this->componentDir}/test-greeting.js", <<<'JS'
+import { LitElement, html, css } from 'lit';
+
 class TestGreeting extends LitElement {
   static properties = {
     name: { type: String },
@@ -80,8 +91,12 @@ JS);
    * {@inheritdoc}
    */
   protected function tearDown(): void {
-    // Clean up component files.
     if (is_dir($this->componentDir)) {
+      // Remove symlink first.
+      $link = "{$this->componentDir}/node_modules";
+      if (is_link($link)) {
+        unlink($link);
+      }
       array_map('unlink', glob("{$this->componentDir}/*.js") ?: []);
       rmdir($this->componentDir);
     }
@@ -191,6 +206,23 @@ HTML;
 
     $path = "$binDir/$name";
     return is_executable($path) ? $path : NULL;
+  }
+
+  /**
+   * Find a node_modules directory containing lit.
+   *
+   * Walks up from the given directory looking for node_modules/lit.
+   */
+  private function findNodeModules(string $startDir): ?string {
+    $dir = realpath($startDir);
+    while ($dir && $dir !== '/') {
+      $candidate = "$dir/node_modules";
+      if (is_dir("$candidate/lit")) {
+        return $candidate;
+      }
+      $dir = dirname($dir);
+    }
+    return NULL;
   }
 
 }

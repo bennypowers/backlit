@@ -47,6 +47,10 @@ jobs:
       - name: Download lit-ssr binary
         run: bash backlit/scripts/download-binary.sh
 
+      - name: Install lit for integration tests
+        working-directory: drupal
+        run: npm init -y && npm install lit
+
       - name: Run unit tests
         working-directory: drupal
         env:
