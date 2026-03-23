@@ -52,6 +52,7 @@ jobs:
         env:
           SIMPLETEST_BASE_URL: http://localhost
           SIMPLETEST_DB: sqlite://localhost/sites/default/files/.ht.sqlite
+          SYMFONY_DEPRECATIONS_HELPER: disabled
         run: |
           php vendor/bin/phpunit \
             --bootstrap web/core/tests/bootstrap.php \
@@ -62,6 +63,7 @@ jobs:
         env:
           SIMPLETEST_BASE_URL: http://localhost
           SIMPLETEST_DB: sqlite://localhost/sites/default/files/.ht.sqlite
+          SYMFONY_DEPRECATIONS_HELPER: disabled
         run: |
           php vendor/bin/phpunit \
             --bootstrap web/core/tests/bootstrap.php \

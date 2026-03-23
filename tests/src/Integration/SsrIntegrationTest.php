@@ -172,18 +172,17 @@ HTML;
   private function findBinary(): ?string {
     $binDir = dirname(__DIR__, 3) . '/bin';
 
-    $os = match (PHP_OS_FAMILY) {
-      'Linux' => 'linux',
-      'Darwin' => 'darwin',
-      'Windows' => 'win32',
-      default => return NULL,
-    };
+    $osMap = ['Linux' => 'linux', 'Darwin' => 'darwin', 'Windows' => 'win32'];
+    $os = $osMap[PHP_OS_FAMILY] ?? NULL;
+    if ($os === NULL) {
+      return NULL;
+    }
 
-    $arch = match (php_uname('m')) {
-      'x86_64', 'amd64' => 'x64',
-      'aarch64', 'arm64' => 'arm64',
-      default => return NULL,
-    };
+    $archMap = ['x86_64' => 'x64', 'amd64' => 'x64', 'aarch64' => 'arm64', 'arm64' => 'arm64'];
+    $arch = $archMap[php_uname('m')] ?? NULL;
+    if ($arch === NULL) {
+      return NULL;
+    }
 
     $name = "lit-ssr-$os-$arch";
     if ($os === 'win32') {
