@@ -1,7 +1,7 @@
-FROM php:8.3-cli
+FROM php:8.3-fpm
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      curl unzip git sqlite3 \
+      curl unzip git sqlite3 nginx \
       libsqlite3-dev libpng-dev libzip-dev \
       bc ca-certificates gnupg \
     && docker-php-ext-install pdo_sqlite gd zip opcache \
@@ -32,6 +32,9 @@ COPY fixtures/ /opt/bench/
 # Pre-bundle RHDS components for lit-ssr --skip-bundle.
 RUN ln -s /opt/drupal/node_modules /opt/bench/node_modules \
     && node /opt/bench/bundle.mjs /opt/bench/components.js /opt/bench/bundle.js
+
+# nginx config for Drupal.
+COPY nginx.conf /etc/nginx/sites-available/default
 
 COPY entrypoint.sh /opt/bench/entrypoint.sh
 RUN chmod +x /opt/bench/entrypoint.sh

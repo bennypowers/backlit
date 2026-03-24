@@ -69,10 +69,16 @@ echo "$NODES" | while IFS=$'\t' read -r nid title cnt; do
   printf "  /node/%-4s %-42s ~%s elements\n" "$nid" "$title" "$cnt"
 done
 
-# ── Start server ─────────────────────────────────────────────────────
-php -S 127.0.0.1:$PORT -t web >/dev/null 2>&1 &
-SERVER_PID=$!
-trap "kill $SERVER_PID 2>/dev/null; wait $SERVER_PID 2>/dev/null || true" EXIT
+# ── Start PHP-FPM + nginx ────────────────────────────────────────────
+# Ensure www-data can write the SQLite DB (+ journal) and Drupal files.
+chown -R www-data:www-data web/sites/default 2>/dev/null || true
+# SQLite needs the directory writable for journal/WAL files.
+chown www-data:www-data db.sqlite /opt/drupal 2>/dev/null || true
+chmod 777 /opt/drupal 2>/dev/null || true
+chmod 666 db.sqlite 2>/dev/null || true
+
+php-fpm -D
+nginx
 
 echo "==> Waiting for server..."
 for _ in $(seq 1 30); do
@@ -156,5 +162,6 @@ done <<< "$NODES"
 echo ""
 echo "SSR  = Backlit processes response through lit-ssr binary"
 echo "Plain = Backlit installed, bundle not enabled (subscriber skips)"
-echo "Page cache disabled; every request hits PHP"
+echo "Page cache disabled; every request hits PHP-FPM"
+echo "PHP-FPM + nginx; binary process persists across requests"
 echo "Warm renders only (1 warmup excluded per config change)"
