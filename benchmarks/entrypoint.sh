@@ -46,6 +46,7 @@ $DRUSH en backlit --yes --quiet
 $DRUSH php:eval '
   \Drupal::configFactory()->getEditable("backlit.settings")
     ->set("enabled_bundles", ["page"])
+    ->set("render_mode", "post_render")
     ->save();
 '
 
@@ -96,12 +97,13 @@ if [ "$SIZE" -lt 1000 ]; then
 fi
 
 # ── Helpers ──────────────────────────────────────────────────────────
-set_ssr() {
-  local bundles='[]'
-  [ "$1" = "true" ] && bundles='["page"]'
+configure_backlit() {
+  local mode="$1" bundles="$2"
   $DRUSH php:eval "
     \\Drupal::configFactory()->getEditable('backlit.settings')
-      ->set('enabled_bundles', $bundles)->save();
+      ->set('render_mode', '$mode')
+      ->set('enabled_bundles', $bundles)
+      ->save();
   " 2>/dev/null
   $DRUSH cr --quiet 2>/dev/null
 }
@@ -137,31 +139,38 @@ echo "Iterations: $ITERATIONS"
 echo "PHP: $(php -r 'echo PHP_VERSION;')"
 echo ""
 
-FMT="| %-35s | %5s | %9s | %9s | %9s | %9s | %9s | %9s |"
-printf "$FMT\n" "Page" "Elems" "SSR med" "SSR p95" "Plain med" "Plain p95" "SSR KB" "Plain KB"
-printf "$FMT\n" "-----------------------------------" "-----" "---------" "---------" "---------" "---------" "---------" "---------"
+for MODE in post_render response; do
+  echo "--- Mode: $MODE ---"
+  echo ""
 
-while IFS=$'\t' read -r nid title elcount; do
-  url="$URL/node/$nid"
+  FMT="| %-35s | %5s | %9s | %9s | %9s | %9s | %9s | %9s |"
+  printf "$FMT\n" "Page" "Elems" "SSR med" "SSR p95" "Plain med" "Plain p95" "SSR KB" "Plain KB"
+  printf "$FMT\n" "-----------------------------------" "-----" "---------" "---------" "---------" "---------" "---------" "---------"
 
-  set_ssr true
-  curl -sf "$url" -o /dev/null; sleep 0.2
-  read -r sm sp95 smin smax ssize <<< "$(bench_url "$url" "$ITERATIONS")"
+  while IFS=$'\t' read -r nid title elcount; do
+    url="$URL/node/$nid"
 
-  set_ssr false
-  curl -sf "$url" -o /dev/null; sleep 0.2
-  read -r pm pp95 pmin pmax psize <<< "$(bench_url "$url" "$ITERATIONS")"
+    configure_backlit "$MODE" '["page"]'
+    curl -sf "$url" -o /dev/null; sleep 0.2
+    read -r sm sp95 smin smax ssize <<< "$(bench_url "$url" "$ITERATIONS")"
 
-  printf "$FMT\n" \
-    "$title" "$elcount" \
-    "${sm}ms" "${sp95}ms" "${pm}ms" "${pp95}ms" \
-    "$(echo "scale=0; $ssize / 1024" | bc)" \
-    "$(echo "scale=0; $psize / 1024" | bc)"
-done <<< "$NODES"
+    configure_backlit "$MODE" '[]'
+    curl -sf "$url" -o /dev/null; sleep 0.2
+    read -r pm pp95 pmin pmax psize <<< "$(bench_url "$url" "$ITERATIONS")"
 
-echo ""
-echo "SSR  = Backlit processes response through lit-ssr binary"
-echo "Plain = Backlit installed, bundle not enabled (subscriber skips)"
-echo "Page cache disabled; every request hits PHP-FPM"
-echo "PHP-FPM + nginx; binary process persists across requests"
-echo "Warm renders only (1 warmup excluded per config change)"
+    printf "$FMT\n" \
+      "$title" "$elcount" \
+      "${sm}ms" "${sp95}ms" "${pm}ms" "${pp95}ms" \
+      "$(echo "scale=0; $ssize / 1024" | bc)" \
+      "$(echo "scale=0; $psize / 1024" | bc)"
+  done <<< "$NODES"
+
+  echo ""
+done
+
+echo "post_render = #post_render on entity render arrays (result cached by Drupal)"
+echo "response    = KernelEvents::RESPONSE subscriber (processes full page, not cached)"
+echo "SSR         = Backlit enabled for page bundle"
+echo "Plain       = Backlit installed, bundle not enabled"
+echo "Page cache disabled; dynamic page cache active"
+echo "PHP-FPM + nginx"

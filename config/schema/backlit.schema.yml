@@ -8,3 +8,6 @@ backlit.settings:
       sequence:
         type: string
         label: 'Bundle machine name'
+    render_mode:
+      type: string
+      label: 'Rendering mode'
