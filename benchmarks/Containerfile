@@ -1,0 +1,39 @@
+FROM php:8.3-cli
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      curl unzip git sqlite3 \
+      libsqlite3-dev libpng-dev libzip-dev \
+      bc ca-certificates gnupg \
+    && docker-php-ext-install pdo_sqlite gd zip opcache \
+    && rm -rf /var/lib/apt/lists/*
+
+# Node.js 24 from nodesource.
+RUN curl -fsSL https://deb.nodesource.com/setup_24.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN curl -sS https://getcomposer.org/installer \
+    | php -- --install-dir=/usr/bin --filename=composer
+
+WORKDIR /opt/drupal
+
+# Heavy layer: Drupal + drush (cached between runs).
+RUN composer create-project drupal/recommended-project:~11.0 . \
+      --no-interaction --quiet \
+    && composer config minimum-stability dev \
+    && composer require drush/drush --no-interaction --quiet
+
+# RHDS elements + esbuild for bundling.
+RUN npm init -y --silent \
+    && npm install @rhds/elements lit @lit-labs/ssr esbuild --silent
+
+COPY fixtures/ /opt/bench/
+
+# Pre-bundle RHDS components for lit-ssr --skip-bundle.
+RUN ln -s /opt/drupal/node_modules /opt/bench/node_modules \
+    && node /opt/bench/bundle.mjs /opt/bench/components.js /opt/bench/bundle.js
+
+COPY entrypoint.sh /opt/bench/entrypoint.sh
+RUN chmod +x /opt/bench/entrypoint.sh
+
+ENTRYPOINT ["/opt/bench/entrypoint.sh"]
