@@ -4,7 +4,7 @@
  * @file
  * Create benchmark test nodes with varying numbers of RHDS elements.
  *
- * Run via: drush php:eval "$(cat benchmarks/create-nodes.php)"
+ * Run via: drush scr benchmarks/fixtures/create-nodes.php
  */
 
 use Drupal\node\Entity\Node;

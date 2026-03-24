@@ -123,7 +123,7 @@ bench_url() {
     times+=("$t")
   done
 
-  IFS=$'\n' sorted=($(sort -g <<<"${times[*]}")); unset IFS
+  IFS=$'\n' sorted=($(printf '%s\n' "${times[@]}" | sort -g)); unset IFS
   local c=${#sorted[@]}
   local p95=$(( (c * 95) / 100 ))
   [ $p95 -ge $c ] && p95=$((c - 1))

@@ -6,6 +6,7 @@
  */
 
 use Drupal\backlit\Render\BacklitPostRender;
+use Drupal\Core\Cache\CacheableMetadata;
 use Drupal\Core\Entity\Display\EntityViewDisplayInterface;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\node\NodeInterface;
@@ -24,6 +25,8 @@ function backlit_entity_view_alter(array &$build, EntityInterface $entity, Entit
   }
 
   $config = \Drupal::config('backlit.settings');
+  CacheableMetadata::createFromObject($config)->applyTo($build);
+
   if ($config->get('render_mode') !== 'post_render') {
     return;
   }

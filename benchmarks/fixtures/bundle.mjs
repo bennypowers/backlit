@@ -25,8 +25,8 @@ const stubNodeBuiltins = {
         export const promises = { readFile: async () => '', stat: async () => ({ size: 0 }) };
         export const resolve = (...a) => a.join('/');
         export const join = (...a) => a.join('/');
-        export const dirname = p => p;
-        export const basename = p => p;
+        export const dirname = p => p.substring(0, p.lastIndexOf('/')) || '.';
+        export const basename = p => p.substring(p.lastIndexOf('/') + 1);
         export const extname = () => '';
         export const createHash = () => ({ update(){ return this; }, digest: () => '' });
         export const Readable = class {};
@@ -88,7 +88,9 @@ if (typeof globalThis.Event === 'undefined') {
   globalThis.Event = class Event { constructor(t,o){this.type=t;} };
 }
 if (typeof globalThis.ErrorEvent === 'undefined') {
-  globalThis.ErrorEvent = class ErrorEvent extends Event {};
+  globalThis.ErrorEvent = class ErrorEvent extends Event {
+    constructor(t,o){super(t,o);this.message=o?.message||'';this.filename=o?.filename||'';this.lineno=o?.lineno||0;this.colno=o?.colno||0;this.error=o?.error;}
+  };
 }
 if (typeof globalThis.CustomEvent === 'undefined') {
   globalThis.CustomEvent = class CustomEvent extends Event { constructor(t,o){super(t,o);this.detail=o?.detail;} };
