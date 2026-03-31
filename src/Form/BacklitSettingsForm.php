@@ -8,7 +8,7 @@ use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
 
 /**
- * Configure which content types get Lit SSR.
+ * Configure Backlit SSR settings.
  */
 final class BacklitSettingsForm extends ConfigFormBase {
 
@@ -31,6 +31,18 @@ final class BacklitSettingsForm extends ConfigFormBase {
    */
   public function buildForm(array $form, FormStateInterface $form_state): array {
     $config = $this->config('backlit.settings');
+
+    $form['render_mode'] = [
+      '#type' => 'radios',
+      '#title' => $this->t('Rendering mode'),
+      '#options' => [
+        'post_render' => $this->t('Render array (#post_render) -- integrates with Drupal render cache, recommended'),
+        'response' => $this->t('Response subscriber -- processes the full response HTML, bypasses render cache'),
+      ],
+      '#default_value' => $config->get('render_mode') ?? 'post_render',
+      '#description' => $this->t('The render array mode caches DSD-enhanced markup per entity. The response mode processes the entire page on every cache miss.'),
+    ];
+
     $enabled = $config->get('enabled_bundles') ?? [];
 
     $types = \Drupal::entityTypeManager()
@@ -61,6 +73,7 @@ final class BacklitSettingsForm extends ConfigFormBase {
 
     $this->config('backlit.settings')
       ->set('enabled_bundles', $enabled)
+      ->set('render_mode', $form_state->getValue('render_mode'))
       ->save();
 
     parent::submitForm($form, $form_state);

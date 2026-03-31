@@ -68,12 +68,7 @@ final class LitSsrRenderer implements LitSsrRendererInterface {
       throw new \RuntimeException("Backlit binary not found: $binary. Run: composer run post-install-cmd");
     }
 
-    $files = self::getComponentFiles();
-    if ($files === []) {
-      throw new \RuntimeException('Backlit: no component files found. Set backlit.components_dir in settings.php or place source files in your theme\'s components/ directory.');
-    }
-
-    $cmd = array_merge([$binary], $files);
+    $cmd = self::buildCommand($binary);
 
     $this->process = proc_open(
       $cmd,
@@ -88,6 +83,34 @@ final class LitSsrRenderer implements LitSsrRendererInterface {
     if (!is_resource($this->process)) {
       throw new \RuntimeException('Failed to start lit-ssr-runtime process.');
     }
+  }
+
+  /**
+   * Build the command array for the lit-ssr binary.
+   *
+   * If $settings['backlit']['bundle'] is set, uses --skip-bundle with
+   * the pre-built JS file. Otherwise discovers source files and passes
+   * them as positional args for esbuild bundling.
+   *
+   * @return string[]
+   */
+  private static function buildCommand(string $binary): array {
+    $settings = \Drupal::service('settings');
+    $backlit = $settings->get('backlit', []);
+
+    if (!empty($backlit['bundle'])) {
+      $bundle = $backlit['bundle'];
+      if (!is_file($bundle)) {
+        throw new \RuntimeException("Backlit bundle not found: $bundle");
+      }
+      return [$binary, '--skip-bundle', $bundle];
+    }
+
+    $files = self::getComponentFiles();
+    if ($files === []) {
+      throw new \RuntimeException('Backlit: no component files found. Set backlit.components_dir in settings.php or place source files in your theme\'s components/ directory.');
+    }
+    return array_merge([$binary], $files);
   }
 
   /**

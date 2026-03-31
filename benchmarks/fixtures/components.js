@@ -1,0 +1,16 @@
+import '@patternfly/pfe-core/ssr-shims.js';
+import '@rhds/elements/rh-card/rh-card.js';
+import '@rhds/elements/rh-alert/rh-alert.js';
+import '@rhds/elements/rh-badge/rh-badge.js';
+import '@rhds/elements/rh-blockquote/rh-blockquote.js';
+import '@rhds/elements/rh-button/rh-button.js';
+import '@rhds/elements/rh-cta/rh-cta.js';
+import '@rhds/elements/rh-stat/rh-stat.js';
+import '@rhds/elements/rh-tabs/rh-tabs.js';
+import '@rhds/elements/rh-tag/rh-tag.js';
+import '@rhds/elements/rh-accordion/rh-accordion.js';
+import '@rhds/elements/rh-spinner/rh-spinner.js';
+import '@rhds/elements/rh-surface/rh-surface.js';
+import '@rhds/elements/rh-tile/rh-tile.js';
+import '@rhds/elements/rh-timestamp/rh-timestamp.js';
+import '@rhds/elements/rh-tooltip/rh-tooltip.js';

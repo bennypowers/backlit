@@ -48,6 +48,12 @@ final class SsrResponseSubscriber implements EventSubscriberInterface {
     $request = $event->getRequest();
     $response = $event->getResponse();
 
+    // Only run in 'response' mode; 'post_render' is handled by the hook.
+    $mode = $this->configFactory->get('backlit.settings')->get('render_mode') ?? 'post_render';
+    if ($mode !== 'response') {
+      return;
+    }
+
     // Skip admin routes and non-HTML responses.
     $route = $request->attributes->get('_route_object');
     if ($route && $this->adminContext->isAdminRoute($route)) {

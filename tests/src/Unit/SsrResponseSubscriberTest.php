@@ -61,7 +61,23 @@ class SsrResponseSubscriberTest extends TestCase {
   /**
    * @covers ::onResponse
    */
+  public function testSkipsInPostRenderMode(): void {
+    $this->setUpConfig(['article'], 'post_render');
+    $this->renderer->expects($this->never())->method('render');
+
+    $event = $this->createResponseEvent(
+      route: new Route('/node/1'),
+      contentType: 'text/html',
+    );
+
+    $this->subscriber->onResponse($event);
+  }
+
+  /**
+   * @covers ::onResponse
+   */
   public function testSkipsAdminRoutes(): void {
+    $this->setUpConfig([], 'response');
     $route = new Route('/admin/content');
     $this->adminContext->method('isAdminRoute')->with($route)->willReturn(TRUE);
 
@@ -79,6 +95,7 @@ class SsrResponseSubscriberTest extends TestCase {
    * @covers ::onResponse
    */
   public function testSkipsNonHtmlResponses(): void {
+    $this->setUpConfig([], 'response');
     $route = new Route('/api/data');
     $this->adminContext->method('isAdminRoute')->willReturn(FALSE);
 
@@ -96,6 +113,7 @@ class SsrResponseSubscriberTest extends TestCase {
    * @covers ::onResponse
    */
   public function testSkipsNonNodeRoutes(): void {
+    $this->setUpConfig([], 'response');
     $route = new Route('/my-view-page');
     $this->adminContext->method('isAdminRoute')->willReturn(FALSE);
 
@@ -168,6 +186,7 @@ class SsrResponseSubscriberTest extends TestCase {
    * @covers ::onResponse
    */
   public function testSkipsWhenNoRouteObject(): void {
+    $this->setUpConfig([], 'response');
     $this->adminContext->expects($this->never())->method('isAdminRoute');
     $this->renderer->expects($this->never())->method('render');
 
@@ -205,13 +224,16 @@ class SsrResponseSubscriberTest extends TestCase {
   }
 
   /**
-   * Set up the config factory mock with enabled bundles.
+   * Set up the config factory mock.
    */
-  private function setUpConfig(array $enabledBundles): void {
+  private function setUpConfig(array $enabledBundles, string $renderMode = 'response'): void {
     $config = $this->createMock(ImmutableConfig::class);
     $config->method('get')
-      ->with('enabled_bundles')
-      ->willReturn($enabledBundles);
+      ->willReturnCallback(fn(string $key) => match ($key) {
+        'render_mode' => $renderMode,
+        'enabled_bundles' => $enabledBundles,
+        default => NULL,
+      });
 
     $this->configFactory->method('get')
       ->with('backlit.settings')
