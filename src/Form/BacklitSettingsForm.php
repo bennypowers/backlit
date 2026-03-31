@@ -54,6 +54,13 @@ final class BacklitSettingsForm extends ConfigFormBase {
       $options[$type->id()] = $type->label();
     }
 
+    $form['minify'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t('Minify shadow roots'),
+      '#description' => $this->t('Remove HTML and CSS comments from rendered shadow roots. Lit SSR markers required for hydration are preserved.'),
+      '#default_value' => $config->get('minify') ?? FALSE,
+    ];
+
     $form['enabled_bundles'] = [
       '#type' => 'checkboxes',
       '#title' => $this->t('Content types with SSR enabled'),
@@ -74,6 +81,7 @@ final class BacklitSettingsForm extends ConfigFormBase {
     $this->config('backlit.settings')
       ->set('enabled_bundles', $enabled)
       ->set('render_mode', $form_state->getValue('render_mode'))
+      ->set('minify', (bool) $form_state->getValue('minify'))
       ->save();
 
     parent::submitForm($form, $form_state);

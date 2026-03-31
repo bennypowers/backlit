@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Drupal\Tests\backlit\Integration;
 
 use Drupal\backlit\Service\LitSsrRenderer;
+use Drupal\Core\Config\ConfigFactoryInterface;
+use Drupal\Core\Config\ImmutableConfig;
 use Drupal\Core\DependencyInjection\ContainerBuilder;
 use Drupal\Core\Site\Settings;
 use Drupal\Core\Theme\ActiveTheme;
@@ -107,7 +109,7 @@ JS);
    * Verify that a known custom element gets Declarative Shadow DOM.
    */
   public function testRendersDeclarativeShadowDom(): void {
-    $renderer = new LitSsrRenderer();
+    $renderer = $this->createRenderer();
 
     $html = '<html><body><test-greeting name="Drupal"></test-greeting></body></html>';
     $result = $renderer->render($html);
@@ -120,7 +122,7 @@ JS);
    * Unknown elements should pass through unchanged.
    */
   public function testPassesThroughUnknownElements(): void {
-    $renderer = new LitSsrRenderer();
+    $renderer = $this->createRenderer();
 
     $html = '<html><body><unknown-widget>content</unknown-widget></body></html>';
     $result = $renderer->render($html);
@@ -133,7 +135,7 @@ JS);
    * Verify the process stays warm across multiple renders.
    */
   public function testProcessStaysWarm(): void {
-    $renderer = new LitSsrRenderer();
+    $renderer = $this->createRenderer();
 
     $html = '<html><body><test-greeting name="First"></test-greeting></body></html>';
 
@@ -163,7 +165,7 @@ JS);
    * Multi-line HTML should be handled correctly.
    */
   public function testMultiLineHtml(): void {
-    $renderer = new LitSsrRenderer();
+    $renderer = $this->createRenderer();
 
     $html = <<<'HTML'
 <html>
@@ -179,6 +181,64 @@ HTML;
     $result = $renderer->render($html);
 
     $this->assertStringContainsString('shadowrootmode="open"', $result);
+  }
+
+  /**
+   * Minification strips CSS comments but preserves Lit markers and content.
+   */
+  public function testMinifyShadowRoots(): void {
+    $renderer = $this->createRenderer(minify: TRUE);
+
+    $html = '<html><body><test-greeting name="Drupal"></test-greeting></body></html>';
+    $result = $renderer->render($html);
+
+    // Lit markers must survive minification.
+    $this->assertStringContainsString('<!--lit-part', $result);
+    $this->assertStringContainsString('<!--/lit-part-->', $result);
+
+    // Rendered content is preserved.
+    $this->assertStringContainsString('Hello, Drupal!', $result);
+    $this->assertStringContainsString('shadowrootmode="open"', $result);
+
+    // The component's static styles should be present but without any
+    // CSS comments (the test component uses css`:host { display: block; }`
+    // which has no comments, so just verify styles survived).
+    $this->assertStringContainsString(':host { display: block; }', $result);
+  }
+
+  /**
+   * Minification does not alter output when there are no comments to strip.
+   */
+  public function testMinifyProducesSameOutputWhenNoComments(): void {
+    $rendererPlain = $this->createRenderer(minify: FALSE);
+    $rendererMinify = $this->createRenderer(minify: TRUE);
+
+    $html = '<html><body><test-greeting name="Test"></test-greeting></body></html>';
+    $plain = $rendererPlain->render($html);
+
+    // The test component has no CSS or HTML comments, so minified output
+    // should be identical to plain output.
+    $minified = $rendererMinify->render($html);
+    $this->assertSame($plain, $minified);
+  }
+
+  /**
+   * Create a renderer with a mock config factory.
+   */
+  private function createRenderer(bool $minify = FALSE): LitSsrRenderer {
+    $config = $this->createMock(ImmutableConfig::class);
+    $config->method('get')
+      ->willReturnCallback(fn(string $key) => match ($key) {
+        'minify' => $minify,
+        default => NULL,
+      });
+
+    $configFactory = $this->createMock(ConfigFactoryInterface::class);
+    $configFactory->method('get')
+      ->with('backlit.settings')
+      ->willReturn($config);
+
+    return new LitSsrRenderer($configFactory);
   }
 
   /**

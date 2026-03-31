@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Drupal\Tests\backlit\Unit;
 
 use Drupal\backlit\Service\LitSsrRenderer;
+use Drupal\Core\Config\ConfigFactoryInterface;
+use Drupal\Core\Config\ImmutableConfig;
 use Drupal\Core\DependencyInjection\ContainerBuilder;
 use Drupal\Core\Site\Settings;
 use Drupal\Core\Theme\ActiveTheme;
@@ -177,7 +179,8 @@ class LitSsrRendererTest extends TestCase {
    */
   public function testRenderReturnsOriginalHtmlWhenNoComponents(): void {
     $this->setUpDrupalContainer([], '/nonexistent/theme/path');
-    $renderer = new LitSsrRenderer();
+    $configFactory = $this->createMock(ConfigFactoryInterface::class);
+    $renderer = new LitSsrRenderer($configFactory);
     $html = '<rh-card>Hello</rh-card>';
 
     $result = $renderer->render($html);

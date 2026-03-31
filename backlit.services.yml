@@ -1,6 +1,7 @@
 services:
   backlit.renderer:
     class: Drupal\backlit\Service\LitSsrRenderer
+    arguments: ['@config.factory']
 
   backlit.response_subscriber:
     class: Drupal\backlit\EventSubscriber\SsrResponseSubscriber
