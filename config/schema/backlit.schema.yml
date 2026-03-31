@@ -11,3 +11,6 @@ backlit.settings:
     render_mode:
       type: string
       label: 'Rendering mode'
+    minify:
+      type: boolean
+      label: 'Minify shadow roots'
